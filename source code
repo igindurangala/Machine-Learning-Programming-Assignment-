@@ -1,0 +1,83 @@
+import numpy as np
+import random
+
+# Define the RL environment
+class HandwrittenDigitsEnvironment:
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.num_states = len(self.dataset)
+        self.num_actions = 10  # Actions represent digit labels (0-9)
+        self.current_state = None
+
+    def reset(self):
+        # Initialize the environment to a random state (image)
+        self.current_state = random.choice(self.dataset)
+        return self.current_state
+
+    def step(self, action):
+        # Perform the selected action and receive a reward
+        predicted_label = action  # Assume the action represents the predicted label
+        true_label = self.current_state["true_label"]
+
+        if predicted_label == true_label:
+            reward = 1  # Correct prediction
+        else:
+            reward = -1  # Incorrect prediction
+
+        done = True  # For simplicity, we'll consider each episode as one step
+        return self.current_state, reward, done
+
+# Define the Q-learning agent
+class QLearningAgent:
+    def __init__(self, num_states, num_actions, learning_rate=0.1, discount_factor=0.9, exploration_prob=0.1):
+        self.num_states = num_states
+        self.num_actions = num_actions
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.exploration_prob = exploration_prob
+        self.q_table = np.zeros((num_states, num_actions))
+
+    def select_action(self, state):
+        if random.uniform(0, 1) < self.exploration_prob:
+            return random.choice(range(self.num_actions))  # Exploration
+        else:
+            return np.argmax(self.q_table[state, :])  # Exploitation
+
+    def update_q_table(self, state, action, reward, next_state):
+        best_next_action = np.argmax(self.q_table[next_state, :])
+        self.q_table[state, action] = (1 - self.learning_rate) * self.q_table[state, action] + \
+                                      self.learning_rate * (reward + self.discount_factor * self.q_table[next_state, best_next_action])
+
+# Define the main training loop
+def train_q_learning_agent(env, agent, num_episodes):
+    for episode in range(num_episodes):
+        state = env.reset()
+        total_reward = 0
+
+        while True:
+            action = agent.select_action(state)
+            next_state, reward, done = env.step(action)
+            agent.update_q_table(state, action, reward, next_state)
+
+            state = next_state
+            total_reward += reward
+
+            if done:
+                break
+
+        print(f"Episode {episode}: Total Reward = {total_reward}")
+
+# Example usage
+if __name__ == "__main__":
+    # Load the Optical Recognition of Handwritten Digits dataset and preprocess it
+    # dataset = load_and_preprocess_dataset()  # Implement this function
+
+    # Create the RL environment
+    env = HandwrittenDigitsEnvironment(dataset)
+
+    # Initialize the Q-learning agent
+    agent = QLearningAgent(num_states=env.num_states, num_actions=env.num_actions)
+
+    # Train the agent
+    num_episodes = 1000
+    train_q_learning_agent(env, agent, num_episodes)
